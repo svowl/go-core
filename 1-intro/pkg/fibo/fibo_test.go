@@ -1,0 +1,30 @@
+package fibo
+
+import "testing"
+
+func TestFibo(t *testing.T) {
+	testPositive(t)
+	testNegative(t)
+}
+
+// Test positive positions
+func testPositive(t *testing.T) {
+	testData := []int{0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765, 10946, 17711}
+	for n, exp := range testData {
+		got := Fibo(n)
+		if got != exp {
+			t.Fatalf("For position %d got fibonacci %d, expected %d", n, got, exp)
+		}
+	}
+}
+
+// Test negative positions
+func testNegative(t *testing.T) {
+	testData := []int{0, 1, -1, 2, -3, 5, -8, 13, -21, 34, -55, 89, -144, 233, -377, 610, -987, 1597, -2584, 4181, -6765, 10946, -17711}
+	for n, exp := range testData {
+		got := Fibo(-n)
+		if got != exp {
+			t.Fatalf("For position %d got fibonacci %d, expected %d", -n, got, exp)
+		}
+	}
+}
