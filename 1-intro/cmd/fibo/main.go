@@ -8,6 +8,6 @@ import (
 func main() {
 	nums := []int{7, 13, 20, -8, -9}
 	for _, n := range nums {
-		fmt.Printf("Fibonacci number for position %d is %d\n", n, fibo.Fibo(n))
+		fmt.Printf("Число Фибоначчи номер %d это %d\n", n, fibo.Fibo(n))
 	}
 }
