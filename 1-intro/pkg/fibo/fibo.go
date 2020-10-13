@@ -12,14 +12,13 @@ func Fibo(n int) int {
 		sign = -1
 	}
 
-	num := [3]int{0, 1, 1}
+	num := [2]int{0, 1}
 
 	for i := 2; i <= sign*n; i++ {
-		num[2] = num[0] + num[1]
-		num[0], num[1] = num[1], num[2]
+		num[0], num[1] = num[1], num[0]+num[1]
 	}
 
-	res := num[2]
+	res := num[1]
 
 	if sign < 0 && n%2 == 0 {
 		res = -1 * res
