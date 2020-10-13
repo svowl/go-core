@@ -1,6 +1,6 @@
 package fibo
 
-// Fibo is calculates Fibonacchi number by its position n
+// Fibo вычисляет число Фибоначчи по его номеру
 // e.g.: -21, 13, -8, 5, -3, 2, -1, 1, 0, 1, 1, 2, 3, 5, 8, 13, 21
 func Fibo(n int) int {
 	if n == 0 {

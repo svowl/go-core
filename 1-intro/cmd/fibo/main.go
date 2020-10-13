@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	n := flag.Int("n", 0, "Specify position as -n <integer>")
+  n := flag.Int("n", 0, "Specify position as -n <integer>")
 	flag.Parse()
-	fmt.Printf("Fibonacci number for position %d is %d\n", *n, fibo.Fibo(*n))
+	fmt.Printf("Число Фибоначчи номер %d это %d\n", *n, fibo.Fibo(*n))
 }
