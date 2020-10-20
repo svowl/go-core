@@ -34,17 +34,7 @@ func main() {
 
 	fmt.Printf("Теперь в индексе %d записей\n", len(storage))
 
-	var f func(p string)
-	f = func(p string) {
-		fmt.Printf("Поиск по строке \"%s\"\n", p)
-		for u, title := range storage {
-			//fmt.Println(p, title, u)
-			if strings.Contains(strings.ToLower(title), strings.ToLower(p)) {
-				fmt.Printf("  %s: %s\n", u, title)
-			}
-		}
-	}
-
+	fmt.Println(storage)
 	// Берем поисковую фразу из командной строки
 	var phrase string = ""
 	flag.StringVar(&phrase, "s", "", "Укажите поисковую фразу")
@@ -54,13 +44,16 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		if phrase != "" {
-			f(phrase)
+			fmt.Printf("Поиск по строке \"%s\"\n", phrase)
+			for u, title := range storage {
+				if strings.Contains(strings.ToLower(title), strings.ToLower(phrase)) {
+					fmt.Printf("  %s: %s\n", u, title)
+				}
+			}
 		}
 		fmt.Print("Введите поисковую фразу: ")
 		phrase, _ = reader.ReadString('\n')
-		// Для Windows
 		phrase = strings.Replace(phrase, "\r\n", "", -1)
-		// Для макос/linux
-		//phrase = strings.Replace(phrase, "\n", "", -1)
+		phrase = strings.Replace(phrase, "\n", "", -1)
 	}
 }
