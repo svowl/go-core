@@ -14,6 +14,11 @@ import (
 func main() {
 	urls := []string{"https://go.dev", "https://www.google.com", "https://habr.com"}
 
+	// Берем поисковую фразу из командной строки
+	var phrase string = ""
+	flag.StringVar(&phrase, "s", "", "Укажите поисковую фразу")
+	flag.Parse()
+
 	// Структура для хранения данных
 	// key: url, value: page title
 	storage := make(map[string]string)
@@ -33,12 +38,6 @@ func main() {
 	}
 
 	fmt.Printf("Теперь в индексе %d записей\n", len(storage))
-
-	fmt.Println(storage)
-	// Берем поисковую фразу из командной строки
-	var phrase string = ""
-	flag.StringVar(&phrase, "s", "", "Укажите поисковую фразу")
-	flag.Parse()
 
 	// Реализуем ввод фразы с клавиатуры
 	reader := bufio.NewReader(os.Stdin)
