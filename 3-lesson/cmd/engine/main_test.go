@@ -4,21 +4,13 @@ import (
 	"reflect"
 	"testing"
 
-	"go-core/3-lesson/pkg/fakespider"
+	spider "go-core/3-lesson/pkg/fakespider"
 )
-
-// FakeSpider type
-type FakeSpider struct{}
-
-// Scan method of FakeSpider type
-func (*FakeSpider) Scan(url string, depth int) (map[string]string, error) {
-	return fakespider.Scan(url, depth)
-}
 
 func Test_search(t *testing.T) {
 	// тестируем на фейковых данных
-	s := new(FakeSpider)
-	data, err := s.Scan("", 2)
+	s := new(spider.Spider)
+	data, err := Scan(s, "", 2)
 	if err != nil {
 		t.Error("ошибка сканирования")
 	}

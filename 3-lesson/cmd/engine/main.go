@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"go-core/3-lesson/pkg/spider"
@@ -16,12 +14,9 @@ type Scanner interface {
 	Scan(string, int) (map[string]string, error)
 }
 
-// Spider type
-type Spider struct{}
-
 // Scan method of Spider type
-func (*Spider) Scan(url string, depth int) (map[string]string, error) {
-	return spider.Scan(url, depth)
+func Scan(s Scanner, url string, depth int) (map[string]string, error) {
+	return s.Scan(url, depth)
 }
 
 func main() {
@@ -33,7 +28,7 @@ func main() {
 
 	fmt.Println("Индексируем...")
 
-	s := new(Spider)
+	s := new(spider.Spider)
 
 	// Структура для хранения данных
 	// key: url, value: page title
@@ -42,7 +37,7 @@ func main() {
 	urls := []string{"https://go.dev", "https://www.google.com"} //, "https://habr.com"}
 	for _, url := range urls {
 		fmt.Printf("  %s...\n", url)
-		data, err := s.Scan(url, 2)
+		data, err := Scan(s, url, 2)
 		if err != nil {
 			log.Printf("ошибка при сканировании сайта %s: %v\n", url, err)
 		}
@@ -55,7 +50,6 @@ func main() {
 	fmt.Printf("Теперь в индексе %d записей\n", len(storage))
 
 	// Реализуем ввод фразы с клавиатуры
-	reader := bufio.NewReader(os.Stdin)
 	for {
 		if phrase != "" {
 			fmt.Printf("Поиск по строке \"%s\"\n", phrase)
@@ -69,9 +63,7 @@ func main() {
 			}
 		}
 		fmt.Print("Введите поисковую фразу: ")
-		phrase, _ = reader.ReadString('\n')
-		phrase = strings.Replace(phrase, "\r\n", "", -1)
-		phrase = strings.Replace(phrase, "\n", "", -1)
+		fmt.Scanln(&phrase)
 	}
 }
 

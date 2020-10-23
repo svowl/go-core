@@ -1,7 +1,10 @@
 package fakespider
 
+// Spider type
+type Spider struct{}
+
 // Scan выдает фиктивные результаты индексирования
-func Scan(string, int) (map[string]string, error) {
+func (*Spider) Scan(string, int) (map[string]string, error) {
 	return map[string]string{
 		"https://go.dev":                        "go.dev",
 		"https://go.dev/":                       "go.dev",
