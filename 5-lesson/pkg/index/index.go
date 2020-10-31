@@ -13,14 +13,14 @@ import (
 var Hash map[string][]int = make(map[string][]int)
 
 // Record это структура данных, хранящая информацию об одном документе
-// ID вынесено в структуру узла btree.Node
+// ID вынесено в структуру узла btree.Tree
 type Record struct {
 	URL   string
 	Title string
 }
 
 // Records это корневой узел бинарного дерева, содержащего список документов
-var Records *btree.Node
+var Records *btree.Tree
 
 // RecordsCount счетчик количества документов (просто для вывода, чтобы не считать полным обходом дерева)
 var RecordsCount int
@@ -45,9 +45,9 @@ func Build(data map[string]string) map[string][]int {
 		}
 		// id генерим случайным образом
 		id := rnd(i, dataLen)
-		node := btree.Node{
+		node := btree.Tree{
 			ID: id,
-			Doc: Record{
+			Value: Record{
 				URL:   u,
 				Title: t,
 			},
@@ -61,7 +61,7 @@ func Build(data map[string]string) map[string][]int {
 		}
 		RecordsCount++
 		// Строим по ней обратный хеш с ключами - фрагментами слов из Record.Title
-		for _, key := range fragments(node.Doc.(Record).Title) {
+		for _, key := range fragments(node.Value.(Record).Title) {
 			Hash[key] = append(Hash[key], node.ID)
 		}
 		// Сохраняем URL и ID в хэш
@@ -79,8 +79,8 @@ func Search(phrase string) []Record {
 		// Фраза найдена в хеше, ids содержит индексы документов (Record.ID) в массиве Records
 		for _, id := range ids {
 			// Используем бинарный поиск из стандартного пакета, recID - номер записи в Records
-			record, _ := Records.Search(id)
-			doc := record.Doc.(Record)
+			record := Records.Search(id)
+			doc := record.Value.(Record)
 			res = append(res, doc)
 		}
 	}

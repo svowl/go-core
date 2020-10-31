@@ -1,19 +1,17 @@
 package btree
 
-import "errors"
-
-// Node описывает узел дерева
-type Node struct {
+// Tree описывает узел дерева
+type Tree struct {
 	ID          int
-	left, right *Node
-	Doc         interface{}
+	left, right *Tree
+	Value       interface{}
 }
 
 // Add добавляет узел в дерево
-func (b *Node) Add(n *Node) {
+func (b *Tree) Add(n *Tree) {
 	if b.ID == n.ID {
 		// Ключ совпал, переписываем значение
-		b.Doc = n.Doc
+		b.Value = n.Value
 		return
 	}
 	if n.ID < b.ID {
@@ -38,10 +36,10 @@ func (b *Node) Add(n *Node) {
 }
 
 // Search реализует рекурсивный поиск узла в дереве по ID
-func (b *Node) Search(ID int) (*Node, error) {
+func (b *Tree) Search(ID int) *Tree {
 	if ID == b.ID {
 		// ID совпадает, возвращаем элемент
-		return b, nil
+		return b
 	}
 	if ID < b.ID && b.left != nil {
 		// Ищем в левой части
@@ -52,5 +50,5 @@ func (b *Node) Search(ID int) (*Node, error) {
 		return b.right.Search(ID)
 	}
 	// Не нашли - возвращаем nil
-	return nil, errors.New("Неуспешный поиск")
+	return nil
 }
