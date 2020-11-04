@@ -10,20 +10,16 @@ import (
 	"go-core/6-lesson/pkg/index"
 	"go-core/6-lesson/pkg/spider"
 	"go-core/6-lesson/pkg/storage"
+	"go-core/6-lesson/pkg/storage/file"
 )
 
-// Scanner interface, используется в тесте
+// Scanner это интерфейс, используется для тестирования
 type Scanner interface {
 	Scan(string, int) (map[string]string, error)
 }
 
-// Scan method of Spider type
-func Scan(s Scanner, url string, depth int) (map[string]string, error) {
-	return s.Scan(url, depth)
-}
-
 // Список URL для сканирования
-var urls = []string{"https://www.google.com", "https://go.dev", "https://habr.com"}
+var urls = []string{"https://www.google.com", "https://go.dev"} //, "https://habr.com"}
 
 // currentIndex содержит текущий индекс и документы, по которым происходит поиск
 var currentIndex index.FileData
@@ -32,15 +28,23 @@ var currentIndex index.FileData
 func build(s Scanner, i *index.Index, ch chan<- int) {
 	for _, url := range urls {
 		fmt.Printf("\n[build] Сканируем  %s...", url)
-		data, err := Scan(s, url, 2)
+		data, err := s.Scan(url, 2)
 		if err != nil {
-			log.Fatalf("\n[build] ошибка при сканировании сайта %s: %v", url, err)
+			fmt.Printf("\n[build] ошибка при сканировании сайта %s: %v", url, err)
+			continue
 		}
 		fmt.Printf("\n[build]  ...найдено %d документов, индексируем...", len(data))
 		// Строим индекс по списку просканированных документов
 		_, err = i.Build(data)
 		if err != nil {
-			log.Fatalf("[main] %s", err)
+			fmt.Printf("[build] %s", err)
+			continue
+		}
+		// Сохраняем индекс в файл
+		err = i.SaveData()
+		if err != nil {
+			fmt.Printf("[build] %s", err)
+			continue
 		}
 		// Посылаем сигнал в канал о необходимости обновить текущий поисковый индекс
 		ch <- 1
@@ -52,7 +56,7 @@ func build(s Scanner, i *index.Index, ch chan<- int) {
 func listen(r storage.ReaderWriter, ch <-chan int) {
 	for {
 		select {
-		case _ = <-ch:
+		case <-ch:
 			// Обработка события: выводим сообщение, чтоб было понятнее
 			fmt.Println("\n[update] Индекс обновлен")
 			updateCurrentIndex(r)
@@ -65,7 +69,7 @@ func updateCurrentIndex(r storage.ReaderWriter) {
 	i, err := index.ReadData(r)
 	if err != nil {
 		// При ошибке не выходим, продолжаем искать в старой структуре
-		fmt.Println("\n[update] Ошибка чтения данных из файла")
+		fmt.Printf("\n[update] Ошибка чтения данных из файла: %v", err)
 	}
 	currentIndex = i
 }
@@ -118,14 +122,14 @@ func main() {
 	s := new(spider.Spider)
 
 	// Изначально файл index.json хранит данные после сканирования https://www.google.com
-	file := "./index.json"
-	storage := storage.ReaderWriterFile{FileName: file}
+	fname := "./index.json"
+	storage := file.Storage{FileName: fname}
 
 	// Инициализируем текущий индекс (для поиска)
 	updateCurrentIndex(&storage)
 
 	// Создаем индекс для сканирования
-	i, err := index.NewIndex(&storage)
+	i, err := index.New(&storage)
 	if err != nil {
 		log.Fatalf("[main] Ошибка инициализации индекса: %s", err)
 	}
@@ -134,7 +138,7 @@ func main() {
 	ch := make(chan int, 1)
 
 	// Запускаем сканер в отдельном потоке, передаем паука, индекс и канал
-	go build(s, &i, ch)
+	go build(s, i, ch)
 
 	// Запускаем слушателя в отдельном потоке, чтобы максимально развести crawler и поиск
 	go listen(&storage, ch)

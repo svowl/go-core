@@ -6,7 +6,7 @@ import (
 
 	"go-core/6-lesson/pkg/index"
 	"go-core/6-lesson/pkg/spider/memspider"
-	"go-core/6-lesson/pkg/storage/memstorage"
+	"go-core/6-lesson/pkg/storage/mem"
 )
 
 func Test_search(t *testing.T) {
@@ -41,18 +41,25 @@ func Test_search(t *testing.T) {
 
 	// тестируем на заранее подготовленных данных (пакет memspider)
 	s := new(memspider.Spider)
-	data, err := Scan(s, "", 2)
+	data, err := s.Scan("", 2)
 	if err != nil {
 		t.Error("ошибка сканирования")
 	}
-	// используем хранилище данных в памяти (memstorage), изначально пустое
-	storage := memstorage.ReaderWriterMem{}
-	i, err := index.NewIndex(&storage)
+	// используем хранилище данных в памяти (storage/mem), изначально пустое
+	storage := mem.Storage{}
+	i, err := index.New(&storage)
 	if err != nil {
 		t.Error(err)
 	}
 	// строим индекс
-	i.Build(data)
+	_, err = i.Build(data)
+	if err != nil {
+		t.Fatalf("Ошибка вызова Build(): %v", err)
+	}
+	err = i.SaveData()
+	if err != nil {
+		t.Fatalf("Ошибка SaveData(): %v", err)
+	}
 	// читаем индекс и разворачиваем в памяти текущий индекс для поиска
 	updateCurrentIndex(&storage)
 	// проверяем результат

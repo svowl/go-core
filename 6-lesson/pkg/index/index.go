@@ -67,8 +67,8 @@ type FileData struct {
 	Records *btree.Tree
 }
 
-// NewIndex создает и инициализирует объект Index
-func NewIndex(rw storage.ReaderWriter) (Index, error) {
+// New создает и инициализирует объект Index
+func New(rw storage.ReaderWriter) (*Index, error) {
 	var i Index
 	i.Hash = make(map[string][]int)
 	i.fragmentMinLen = 2
@@ -77,9 +77,9 @@ func NewIndex(rw storage.ReaderWriter) (Index, error) {
 	i.rw = rw
 	err := i.initData()
 	if err != nil {
-		return i, err
+		return &i, err
 	}
-	return i, nil
+	return &i, nil
 }
 
 // Build получает на вход данные от spider'а, конвертирует их в Records и строит обратный индекс
@@ -120,7 +120,7 @@ func (i *Index) Build(data map[string]string) (Hash, error) {
 		i.idHash[id] = true
 		ri++
 	}
-	return i.Hash, i.saveData()
+	return i.Hash, nil
 }
 
 // initData инициализирует начальные данные из файла
@@ -178,8 +178,8 @@ func ReadData(r storage.ReaderWriter) (FileData, error) {
 	return fileData, nil
 }
 
-// writeFile записывает данные индекса в файл
-func (i *Index) saveData() error {
+// SaveData записывает данные индекса в файл
+func (i *Index) SaveData() error {
 	data := FileData{
 		i.Hash,
 		i.Records, //.Serialize(),

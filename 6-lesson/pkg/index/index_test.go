@@ -2,9 +2,8 @@ package index
 
 import (
 	"errors"
+	"go-core/6-lesson/pkg/storage/mem"
 	"testing"
-
-	"go-core/6-lesson/pkg/storage/memstorage"
 )
 
 // Содержимое исходного файла с некорректной json-строкой
@@ -30,35 +29,35 @@ var testInputData = map[string]string{
 	"https://go.dev/":    "Why Go",
 }
 
-func TestNewIndex(t *testing.T) {
+func TestNew(t *testing.T) {
 	// Empty storage
-	storage := memstorage.ReaderWriterMem{}
-	_, err := NewIndex(&storage)
+	storage := mem.Storage{}
+	_, err := New(&storage)
 	if err != nil {
 		t.Error(err)
 	}
 	// Storage с некорректными json-данными
-	storage = memstorage.ReaderWriterMem{
+	storage = mem.Storage{
 		Content: []byte(testContentWrong),
 	}
-	_, err = NewIndex(&storage)
+	_, err = New(&storage)
 	if err == nil {
 		t.Errorf("Ожидается ошибка json, получено nil")
 	}
 	// Storage с ошибкой
 	testError := errors.New("Test error")
-	storage = memstorage.ReaderWriterMem{
+	storage = mem.Storage{
 		Error: testError,
 	}
-	_, err = NewIndex(&storage)
+	_, err = New(&storage)
 	if err != testError {
 		t.Errorf("Ожидается ошибка %v, получено %v", testError, err)
 	}
 	// Storage с корректной json-строкой
-	storage = memstorage.ReaderWriterMem{
+	storage = mem.Storage{
 		Content: []byte(testContentCorrect),
 	}
-	_, err = NewIndex(&storage)
+	_, err = New(&storage)
 	if err != nil {
 		t.Errorf("Ожидается: нет ошибки, получено: %v", err)
 	}
@@ -66,8 +65,8 @@ func TestNewIndex(t *testing.T) {
 
 func TestIndex_Build(t *testing.T) {
 	// Создаем индекс с пустым исходным файлом
-	storage := memstorage.ReaderWriterMem{}
-	index, err := NewIndex(&storage)
+	storage := mem.Storage{}
+	index, err := New(&storage)
 	if err != nil {
 		t.Error(err)
 	}
@@ -88,6 +87,10 @@ func TestIndex_Build(t *testing.T) {
 			t.Errorf("Ключ %v не найден в индексе", key)
 		}
 	}
+	err = index.SaveData()
+	if err != nil {
+		t.Errorf("[build] %s", err)
+	}
 	// Проверяем соответвие ключей в индексе в записанном файле
 	writedData, err := ReadData(&storage)
 	if err != nil {
@@ -100,7 +103,7 @@ func TestIndex_Build(t *testing.T) {
 	}
 	for _, key := range expKeys {
 		if writedData.Hash[key] == nil {
-			t.Errorf("Ключ %v не найден в индексе в выходном файле", key)
+			t.Fatalf("Ключ %v не найден в индексе в выходном файле", key)
 		}
 	}
 }
