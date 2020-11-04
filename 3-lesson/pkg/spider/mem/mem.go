@@ -1,4 +1,4 @@
-package fakespider
+package mem
 
 // Spider type
 type Spider struct{}

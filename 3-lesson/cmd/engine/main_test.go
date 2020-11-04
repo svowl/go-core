@@ -4,16 +4,13 @@ import (
 	"reflect"
 	"testing"
 
-	spider "go-core/3-lesson/pkg/fakespider"
+	"go-core/3-lesson/pkg/spider/mem"
 )
 
 func Test_search(t *testing.T) {
-	// тестируем на фейковых данных
-	s := new(spider.Spider)
-	data, err := Scan(s, "", 2)
-	if err != nil {
-		t.Error("ошибка сканирования")
-	}
+	// Для тестирования заменяем пакет spider пакетом spider/mem
+	s := new(mem.Spider)
+	data := scan(s, []string{"url"})
 	type args struct {
 		phrase  string
 		storage map[string]string

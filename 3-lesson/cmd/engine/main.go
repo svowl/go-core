@@ -9,14 +9,38 @@ import (
 	"go-core/3-lesson/pkg/spider"
 )
 
-// Scanner interface
+// Scanner интерфейс, объявляющий метод Scan, реализуемый в пакетах spider и mem/spider
 type Scanner interface {
 	Scan(string, int) (map[string]string, error)
 }
 
-// Scan method of Spider type
-func Scan(s Scanner, url string, depth int) (map[string]string, error) {
-	return s.Scan(url, depth)
+// scan запускает сканер s для сайтов urls и отдает результат сканирования
+func scan(s Scanner, urls []string) map[string]string {
+	storage := make(map[string]string)
+	for _, url := range urls {
+		fmt.Printf("  %s...\n", url)
+		data, err := s.Scan(url, 2)
+		if err != nil {
+			log.Printf("ошибка при сканировании сайта %s: %v\n", url, err)
+			continue
+		}
+		for k, v := range data {
+			storage[k] = v
+		}
+	}
+	return storage
+}
+
+// search находит записи в storage по фразе phrase,
+// вынесено в отдельную функцию, чтобы протестировать непосредственно поиск
+func search(phrase string, storage map[string]string) map[string]string {
+	res := make(map[string]string)
+	for u, title := range storage {
+		if strings.Contains(strings.ToLower(title), strings.ToLower(phrase)) {
+			res[u] = title
+		}
+	}
+	return res
 }
 
 func main() {
@@ -32,20 +56,12 @@ func main() {
 
 	// Структура для хранения данных
 	// key: url, value: page title
-	storage := make(map[string]string)
+	var storage map[string]string
 
-	urls := []string{"https://go.dev", "https://www.google.com"} //, "https://habr.com"}
-	for _, url := range urls {
-		fmt.Printf("  %s...\n", url)
-		data, err := Scan(s, url, 2)
-		if err != nil {
-			log.Printf("ошибка при сканировании сайта %s: %v\n", url, err)
-		}
+	var urls = []string{"https://go.dev", "https://www.google.com"} //, "https://habr.com"}
 
-		for k, v := range data {
-			storage[k] = v
-		}
-	}
+	// Получаем данные сканирования
+	storage = scan(s, urls)
 
 	fmt.Printf("Теперь в индексе %d записей\n", len(storage))
 
@@ -65,16 +81,4 @@ func main() {
 		fmt.Print("Введите поисковую фразу: ")
 		fmt.Scanln(&phrase)
 	}
-}
-
-// search находит записи в storage по фразе phrase,
-// вынесено в отдельную функцию, чтобы протестировать непосредственно поиск
-func search(phrase string, storage map[string]string) map[string]string {
-	res := make(map[string]string)
-	for u, title := range storage {
-		if strings.Contains(strings.ToLower(title), strings.ToLower(phrase)) {
-			res[u] = title
-		}
-	}
-	return res
 }
