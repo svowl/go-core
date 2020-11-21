@@ -62,18 +62,8 @@ func (tree *Tree) Count() int {
 	if tree.Root == nil {
 		return 0
 	}
-	ch := make(chan int, 1)
-	len := 1
-	go func(ch <-chan int, len *int) {
-		for {
-			select {
-			case <-ch:
-				*len++
-			}
-		}
-	}(ch, &len)
-	tree.Root.traverse(ch)
-	close(ch)
+	len := 0
+	tree.Root.traverse(&len)
 	return len
 }
 
@@ -163,13 +153,13 @@ func (node *Node) Search(ID int) *Node {
 	return nil
 }
 
-// traverse обходит каждый узел дерева, в каждом узле записывает 1 в переданный канал
+// traverse обходит каждый узел дерева, в каждом узле прибавляет 1 в переданный счетчик.
 // Используется для вычисления количества документов в дереве, см. tree.Count()
-func (node *Node) traverse(ch chan<- int) {
+func (node *Node) traverse(c *int) {
 	if node == nil {
 		return
 	}
-	ch <- 1
-	node.Left.traverse(ch)
-	node.Right.traverse(ch)
+	*c++
+	node.Left.traverse(c)
+	node.Right.traverse(c)
 }
