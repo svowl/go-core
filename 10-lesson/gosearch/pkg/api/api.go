@@ -31,13 +31,22 @@ var ErrBadRequest = errors.New("неверный запрос")
 // Счётчики Prometheus.
 var (
 	searchRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "search_requests_total",
+		Name: "gs_search_requests_total",
 		Help: "Количество поисковых запросов.",
 	})
 	searchRequestsTime = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name:    "search_request_time",
+		Name:    "gs_search_request_time",
 		Help:    "Время выполнения поискового запроса, мс.",
 		Buckets: prometheus.LinearBuckets(10, 10, 20), // 20 корзин, начиная с 0, по 10 элементов
+	})
+	// График изменения значения:
+	// rate(gs_search_request_size_sum[1m])/rate(gs_search_request_size_count[1m])
+	// Значение за все время:
+	// gs_search_request_size_sum/gs_search_request_size_count
+	searchRequestSize = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "gs_search_request_size",
+		Help:    "Длина поискового запроса (в байтах).",
+		Buckets: prometheus.LinearBuckets(1, 5, 20), // 20 корзин, начиная с 1, по 5 элементов
 	})
 )
 
@@ -81,6 +90,10 @@ func (s *Service) Search(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 
 	t := time.Now()
+
+	// сохраняем длину запроса
+	size := len([]byte(mux.Vars(r)["query"]))
+	searchRequestSize.Observe(float64(size))
 
 	result := s.engine.Search(mux.Vars(r)["query"])
 
