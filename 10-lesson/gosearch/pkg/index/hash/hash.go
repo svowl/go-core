@@ -3,6 +3,9 @@ package hash
 import (
 	"gosearch/pkg/crawler"
 	"strings"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 // Index - индекс на основе хэш-таблицы.
@@ -17,6 +20,13 @@ func New() *Index {
 	return &ind
 }
 
+// счетчик prometheus
+// Значение за все время: gs_index_length
+var indexLength = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "gs_index_length",
+	Help: "Длина индекса.",
+})
+
 // Add добавляет данные из переданных документов в индекс.
 //
 // Сначала происходит выделение лексем как ключей словаря из данных документа.
@@ -27,6 +37,8 @@ func (index *Index) Add(docs []crawler.Document) {
 		for _, token := range tokens(doc.Title) {
 			if !exists(index.data[token], doc.ID) {
 				index.data[token] = append(index.data[token], doc.ID)
+				// Увеличиваем prometheus-счетчик длины индекса
+				indexLength.Inc()
 			}
 		}
 	}

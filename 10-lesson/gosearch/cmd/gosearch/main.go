@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"gosearch/pkg/api"
 	"gosearch/pkg/crawler"
 	"gosearch/pkg/crawler/spider"
@@ -32,6 +35,13 @@ type gosearch struct {
 	depth int
 	addr  string
 }
+
+// Счетчик prometheus
+// Значение за все время: gs_documents_total
+var documentsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "gs_documents_total",
+	Help: "Количество документов в БД.",
+})
 
 func main() {
 	server := new()
@@ -76,6 +86,8 @@ func (gs *gosearch) init() {
 			log.Println("ошибка при добавлении сохранении документов в БД:", err)
 			continue
 		}
+		// Добавляем кол-во новых документов в prometheus-счетчик
+		documentsTotal.Add(len(data))
 	}
 }
 
