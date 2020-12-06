@@ -78,14 +78,15 @@ func TestService_Search(t *testing.T) {
 	// проверяем результат
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, found := e.Search(tt.phrase); !found || !reflect.DeepEqual(got, tt.want) {
+			got := e.Search(tt.phrase)
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Фраза: %s, получено %v, ожидается %v", tt.phrase, reflect.ValueOf(got), reflect.ValueOf(tt.want))
 			}
 		})
 	}
 
 	phrase := "something not existing"
-	if _, found := e.Search(phrase); found {
+	if e.Search(phrase) != nil {
 		t.Errorf("Фраза: %s найдена, хотя не должна", phrase)
 	}
 }

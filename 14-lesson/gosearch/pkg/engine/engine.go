@@ -27,13 +27,12 @@ func (s *Service) Init(index *index.Index, storage *storage.Db) {
 }
 
 // Search ищет слово в индексе и возвращает список документов
-func (s *Service) Search(word string) ([]crawler.Document, bool) {
+func (s *Service) Search(word string) []crawler.Document {
 	var result []crawler.Document
-	var found bool = false
 	ids := s.index.Search(word)
 	if ids == nil {
 		// Слово не найдено, возвращаем false
-		return nil, false
+		return nil
 	}
 	// Слово найдено в хеше, ids содержит индексы документов в БД
 	for _, id := range ids {
@@ -45,7 +44,6 @@ func (s *Service) Search(word string) ([]crawler.Document, bool) {
 		}
 		// Документ найден - добавляем его в результат
 		result = append(result, record)
-		found = true
 	}
-	return result, found
+	return result
 }

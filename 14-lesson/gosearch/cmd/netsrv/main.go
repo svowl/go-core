@@ -142,14 +142,14 @@ func (g *gosearch) handler(conn net.Conn) {
 		if phrase != "" {
 			fmt.Println(phrase)
 			// Выполняем поиск и пишем результат в соединение
-			docs, _ := g.engine.Search(phrase)
+			docs := g.engine.Search(phrase)
 			resp := ""
-			if docs != nil {
+			if docs == nil {
+				resp = "No results\r\n"
+			} else {
 				for _, document := range docs {
 					resp = resp + fmt.Sprintf("%s: %s\r\n", document.URL, document.Title)
 				}
-			} else {
-				resp = "No results\r\n"
 			}
 			_, err = conn.Write([]byte(resp))
 			if err != nil {
