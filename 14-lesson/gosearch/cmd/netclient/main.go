@@ -20,7 +20,7 @@ func connect(phrase string) (string, error) {
 	defer conn.Close()
 
 	// Таймаут на чтение полсекунды
-	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
+	conn.SetDeadline(time.Now().Add(time.Millisecond * 500))
 
 	// Пишем в соединение поисковую фразу
 	_, err = conn.Write([]byte(phrase + "\n"))
