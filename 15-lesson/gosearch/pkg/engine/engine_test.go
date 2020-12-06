@@ -14,7 +14,7 @@ import (
 )
 
 // Входные данные для тестирования
-var testDocs = []crawler.Document{
+var docs = []crawler.Document{
 	{ID: 10, URL: "https://google.com", Title: "Google"},
 	{ID: 12, URL: "https://go.dev/", Title: "Why Go"},
 	{ID: 8, URL: "https://golang.org/", Title: "The Go Programming Language"},
@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	// Создаем индекс
 	index := index.New()
 	// Добавляем документы в БД и индекс
-	for _, doc := range testDocs {
+	for _, doc := range docs {
 		err := db.AddDoc(&doc)
 		if err != nil {
 			fmt.Printf("Ошибка добавления документа в БД: %v", err)
