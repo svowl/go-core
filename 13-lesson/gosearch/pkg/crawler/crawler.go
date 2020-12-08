@@ -5,7 +5,8 @@ package crawler
 
 // Scanner определяет контракт поискового робота.
 type Scanner interface {
-	Scan(url []string, depth int) ([]Document, error)
+	Scan(url string, depth int) ([]Document, error)
+	BatchScan(urls []string, depth int, workers int) (<-chan Document, <-chan error)
 }
 
 // Document - документ, веб-страница, полученная поисковым роботом.

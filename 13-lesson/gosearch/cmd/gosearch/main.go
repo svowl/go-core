@@ -35,23 +35,25 @@ func main() {
 		"https://www.google.com",
 		"https://go.dev",
 		"https://golang.org",
-		"https://www.mskagency.ru/",
-		"https://www.mos.ru",
-		"https://habr.com",
-		"https://www.alean.ru",
-		"https://www.moscowbooks.ru/",
-		"https://www.museum.ru",
-		"https://investmoscow.ru",
-		"https://mosmetro.ru/",
-		"https://govoritmoskva.ru/",
-		"https://www.tourister.ru/",
-		"https://www.citymoscow.ru/",
-		"https://technomoscow.ru/",
-		"https://www.tourprom.ru/",
-		"https://mosgorzdrav.ru/",
-		"https://101hotels.com/",
-		"https://moscowchanges.ru/",
-		"https://ginza.ru/",
+		/*
+			"https://www.mskagency.ru/",
+			"https://www.mos.ru",
+			"https://habr.com",
+			"https://www.alean.ru",
+			"https://www.moscowbooks.ru/",
+			"https://www.museum.ru",
+			"https://investmoscow.ru",
+			"https://mosmetro.ru/",
+			"https://govoritmoskva.ru/",
+			"https://www.tourister.ru/",
+			"https://www.citymoscow.ru/",
+			"https://technomoscow.ru/",
+			"https://www.tourprom.ru/",
+			"https://mosgorzdrav.ru/",
+			"https://101hotels.com/",
+			"https://moscowchanges.ru/",
+			"https://ginza.ru/",
+		*/
 	}
 
 	// Создание и инициализация gosearch
@@ -63,7 +65,7 @@ func main() {
 	}
 
 	// Запуск генерации поисковых данных в отдельном процессе
-	go g.build()
+	g.build()
 
 	// Запуск интерфейсной части: ввод с клавиатуры и выдача результатов поиска в консоли
 	g.search()
@@ -80,7 +82,7 @@ func (g *gosearch) init(urls []string, filename string) error {
 	// Список сайтов
 	g.urls = urls
 	// Создаем объект сканер с максимум 10 потоками
-	g.spider = spider.New(10)
+	g.spider = spider.New()
 	// Хранилище данных для БД
 	g.storage = file.New(filename)
 	// Поисковая структура для БД
@@ -99,31 +101,25 @@ func (g *gosearch) init(urls []string, filename string) error {
 
 // build запускает сканирование сайтов, сохранение данных в БД и построение индекса
 func (g *gosearch) build() {
-	if data, err := g.spider.Scan(g.urls, 2); err == nil {
-		for _, doc := range data {
-			// Добавление документа в БД. При этом для документа генерируется ID
+	// Запускаем многопоточное сканирование
+	chRes, chErr := g.spider.BatchScan(g.urls, 2, 10)
+	// Принимаем отсканированные документы по одному и добавляем в БД и индекс
+	go func() {
+		for doc := range chRes {
 			err := g.db.AddDoc(&doc)
 			if err != nil {
-				// Ошибка при добавлении документа - игнорируем его и идем дальше
-				fmt.Printf("\n[warning] %v", err)
+				// Ошибка при добавлении документа - игнорируем и идем дальше
+				log.Println("Ошибка добавления документа в БД:", err)
 				continue
 			}
-			// Добавление документа в индекс
 			g.index.Add(doc)
 		}
-	}
-	// Проверяем есть ли вообще данные в БД и если нет - завершаем работу с ошибкой, т.к. это фатальная ситуация
-	cnt := g.db.Count()
-	if cnt == 0 {
-		log.Fatal("[build] В БД нет документов!")
-	}
-	// Сохраняем документы БД в файл
-	_, err := g.db.Save()
-	if err != nil {
-		fmt.Printf("[build] %s", err)
-	} else {
-		fmt.Printf("\n[build] Сохранено %d документов", g.db.Count())
-	}
+	}()
+	go func() {
+		for range chErr {
+			// Игнориуем ошибки сканирования
+		}
+	}()
 }
 
 // search реализует ввод фразы с клавиатуры, поиск и выдачу результатов в консоль

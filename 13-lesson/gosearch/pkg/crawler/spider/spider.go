@@ -3,7 +3,9 @@
 package spider
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -16,78 +18,87 @@ import (
 )
 
 // Service - служба поискового робота.
-type Service struct {
-	maxWorkers int
-}
+type Service struct{}
 
 // New - констрктор службы поискового робота.
-func New(w int) *Service {
+func New() *Service {
 	s := Service{}
-	s.maxWorkers = w
 	return &s
 }
 
-// scanner это worker, сканирующий url из канала urls и отправляющий результат в канал result
-// Вывод в консоль здесь приведен для наглядности, реально он не нужен, конечно
-func (s *Service) scanner(id int, depth int, urls <-chan string, result chan<- map[string]string, wg *sync.WaitGroup) {
-	defer wg.Done()
-	pages := make(map[string]string)
-	for url := range urls {
-		fmt.Printf("\n[scanner #%d]: Начинает сканировать  %s...", id, url)
-		if err := parse(url, depth, pages); err != nil {
-			fmt.Printf("\n[scanner #%d] Ошибка сканирования %s: %v", id, url, err)
-		} else {
-			fmt.Printf("\n[scanner #%d] Закончил сканировать %s, найдено %d документов", id, url, len(pages))
-		}
-		result <- pages
-	}
-}
+// BatchScan запускает многопоточное сканирование сайтов (urls),
+// с учётом глубины перехода по ссылкам depth
+// и количесвтва одновременных потоков workers.
+// Метод возвращает канал результатов и канал ошибок
+func (s *Service) BatchScan(urls []string, depth int, workers int) (<-chan crawler.Document, <-chan error) {
 
-// Scan осуществляет рекурсивный обход ссылок сайта, указанного в URL,
-// с учётом глубины перехода по ссылкам, переданной в depth.
-func (s *Service) Scan(urls []string, depth int) (data []crawler.Document, err error) {
-
-	// Создаем очередь работ (сайтов для сканирования) и очередь результатов
+	// Создаем каналы очереди работ (сайтов для сканирования), результатов и ошибок
 	jobs := make(chan string)
-	res := make(chan map[string]string)
+	chRes := make(chan crawler.Document)
+	chErr := make(chan error)
 
 	// Группа ожидания для воркеров
 	var wg sync.WaitGroup
-	wg.Add(s.maxWorkers)
+	wg.Add(workers)
 
 	// Запускаем сканеры
-	for i := 1; i <= s.maxWorkers; i++ {
-		go s.scanner(i, depth, jobs, res, &wg)
-	}
-
-	// Группа ожидания для результатов
-	var wgRes sync.WaitGroup
-	wgRes.Add(len(urls))
-
-	// Запускаем обработчик результатов
-	go func(ch chan map[string]string) {
-		for pages := range ch {
-			if pages != nil {
+	for i := 1; i <= workers; i++ {
+		go func(id int) {
+			defer wg.Done()
+			pages := make(map[string]string)
+			for url := range jobs {
+				log.Printf("[scanner #%d] Начинает сканировать  %s...\n", id, url)
+				if err := parse(url, depth, pages); err != nil {
+					errMsg := fmt.Sprintf("[scanner #%d] Ошибка сканирования %s: %v\n", id, url, err)
+					log.Println(errMsg)
+					chErr <- errors.New(errMsg)
+					continue
+				}
+				log.Printf("[scanner #%d] Закончил сканировать %s, найдено %d документов\n", id, url, len(pages))
 				for url, title := range pages {
 					item := crawler.Document{
 						URL:   url,
 						Title: title,
 					}
-					data = append(data, item)
+					chRes <- item
 				}
 			}
-			wgRes.Done()
-		}
-	}(res)
-
-	// Записываем ссылки в канал jobs
-	for _, url := range urls {
-		jobs <- url
+		}(i)
 	}
 
-	close(jobs)
-	wg.Wait()
-	wgRes.Wait()
+	// Запускаем процесс ожидания окончания работы всех сканеров, после чего закрываем каналы
+	go func() {
+		wg.Wait()
+		close(chErr)
+		close(chRes)
+		log.Println("Сканирование окончено")
+	}()
+
+	// Записываем ссылки в канал jobs
+	go func() {
+		for _, url := range urls {
+			jobs <- url
+		}
+		close(jobs)
+	}()
+
+	return chRes, chErr
+}
+
+// Scan осуществляет рекурсивный обход ссылок сайта, указанного в URL,
+// с учётом глубины перехода по ссылкам, переданной в depth.
+func (s *Service) Scan(url string, depth int) (data []crawler.Document, err error) {
+	pages := make(map[string]string)
+
+	parse(url, depth, pages)
+
+	for url, title := range pages {
+		item := crawler.Document{
+			URL:   url,
+			Title: title,
+		}
+		data = append(data, item)
+	}
 
 	return data, nil
 }
@@ -106,6 +117,7 @@ func parse(link string, depth int, data map[string]string) error {
 		return err
 	}
 	defer response.Body.Close()
+
 	page, err := html.Parse(response.Body)
 	if err != nil {
 		return err

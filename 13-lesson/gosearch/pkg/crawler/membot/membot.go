@@ -14,7 +14,7 @@ func New() *Service {
 }
 
 // Scan возвращает заранее подготовленный набор данных
-func (s *Service) Scan(url []string, depth int) ([]crawler.Document, error) {
+func (s *Service) Scan(url string, depth int) ([]crawler.Document, error) {
 
 	data := []crawler.Document{
 		{
