@@ -80,7 +80,7 @@ func (s *Service) authJWT(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if false || authUser.login == "" {
+	if authUser.login == "" {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
