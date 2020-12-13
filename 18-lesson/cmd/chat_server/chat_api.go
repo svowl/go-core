@@ -13,12 +13,15 @@ import (
 // - chMessages: ассоциативный массив каналов для записи сообщений во все открытые соединения по /messages
 // - nextConnID: ID следущего соединения
 // - logger:     интерфейс для записи логов
+// - mux:        мьютекс нужен для установки лока при изменении общей памяти
+// - closeMsgChan: вспомогательный канал для очистки списка каналов соединений chMessages после закрытия соединения
 type Service struct {
-	upgrader   websocket.Upgrader
-	chMessages map[int]chan string
-	nextConnID int
-	logger     io.Writer
-	mux        sync.Mutex
+	upgrader    websocket.Upgrader
+	chMessages  map[int]chan string
+	nextConnID  int
+	logger      io.Writer
+	mux         sync.Mutex
+	chCloseConn chan int
 }
 
 // New возвращает новый объект службы
@@ -28,6 +31,7 @@ func New(logger io.Writer) *Service {
 	s.chMessages = make(map[int]chan string)
 	s.nextConnID = 0
 	s.logger = logger
+	s.chCloseConn = make(chan int)
 	return &s
 }
 
@@ -76,9 +80,12 @@ func (s *Service) sendHandler(w http.ResponseWriter, r *http.Request) {
 		s.log("/send: Message received: " + string(message))
 
 		// Пишем в сообщение в каналы всех открытых соединений
+		// Поскольку читаем из общей памяти (s.chMessages), ставим лок
+		s.mux.Lock()
 		for _, ch := range s.chMessages {
 			ch <- string(message)
 		}
+		s.mux.Unlock()
 
 		return
 	}
@@ -86,6 +93,11 @@ func (s *Service) sendHandler(w http.ResponseWriter, r *http.Request) {
 
 // Обработчик для /messages пишет в соединение сообщения, принятые через /send
 func (s *Service) messagesHandler(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("recovered from ", r)
+		}
+	}()
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -98,23 +110,32 @@ func (s *Service) messagesHandler(w http.ResponseWriter, r *http.Request) {
 	s.mux.Lock()
 	connID := s.nextConnID
 	s.nextConnID++
-	s.chMessages[connID] = make(chan string)
+	connChannel := make(chan string)
+	s.chMessages[connID] = connChannel
 	s.mux.Unlock()
 
 	// Пишем в канал текущего соединения
-	for message := range s.chMessages[connID] {
+	for message := range connChannel {
 		conn.WriteMessage(websocket.TextMessage, []byte(message))
 		s.log(fmt.Sprintf("/messages: Write[conn %d]: %s", connID, message))
 	}
 
-	// Закрываем канал и удаляем его из s.chMessages
-	s.mux.Lock()
-	close(s.chMessages[connID])
-	delete(s.chMessages, connID)
-	s.mux.Unlock()
+	// Во избежание паники закрытие канала и удаление из списка каналов вынесено в отдельный метод и синхронизируется
+	// через отдельный канал
+	s.chCloseConn <- connID
 }
 
 // Логгер
 func (s *Service) log(message string) {
 	s.logger.Write([]byte(message + "\n"))
+}
+
+// closeMsgChan закрывает канал сообщений соединения и удаляет его из s.chMessages
+func (s *Service) closeMsgChan(ID int) {
+	for connID := range s.chCloseConn {
+		s.mux.Lock()
+		close(s.chMessages[connID])
+		delete(s.chMessages, connID)
+		s.mux.Unlock()
+	}
 }
