@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -17,6 +18,7 @@ type Service struct {
 	chMessages map[int]chan string
 	nextConnID int
 	logger     io.Writer
+	mux        sync.Mutex
 }
 
 // New возвращает новый объект службы
@@ -93,9 +95,11 @@ func (s *Service) messagesHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	// Увеличиваем счетчик соединений и создаем новый канал для записи
+	s.mux.Lock()
 	connID := s.nextConnID
 	s.nextConnID++
 	s.chMessages[connID] = make(chan string)
+	s.mux.Unlock()
 
 	// Пишем в канал текущего соединения
 	for message := range s.chMessages[connID] {
@@ -104,8 +108,10 @@ func (s *Service) messagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Закрываем канал и удаляем его из s.chMessages
+	s.mux.Lock()
 	close(s.chMessages[connID])
 	delete(s.chMessages, connID)
+	s.mux.Unlock()
 }
 
 // Логгер
