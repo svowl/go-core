@@ -14,14 +14,12 @@ import (
 // - nextConnID: ID следущего соединения
 // - logger:     интерфейс для записи логов
 // - mux:        мьютекс нужен для установки лока при изменении общей памяти
-// - closeMsgChan: вспомогательный канал для очистки списка каналов соединений chMessages после закрытия соединения
 type Service struct {
-	upgrader    websocket.Upgrader
-	chMessages  map[int]chan string
-	nextConnID  int
-	logger      io.Writer
-	mux         sync.Mutex
-	chCloseConn chan int
+	upgrader   websocket.Upgrader
+	chMessages map[int]chan string
+	nextConnID int
+	logger     io.Writer
+	mux        sync.Mutex
 }
 
 // New возвращает новый объект службы
@@ -30,7 +28,6 @@ func New(logger io.Writer) *Service {
 	s.upgrader = websocket.Upgrader{}
 	s.chMessages = make(map[int]chan string)
 	s.logger = logger
-	s.chCloseConn = make(chan int)
 	return &s
 }
 
@@ -38,7 +35,6 @@ func New(logger io.Writer) *Service {
 func (s *Service) endpoints() {
 	http.HandleFunc("/send", s.sendHandler)
 	http.HandleFunc("/messages", s.messagesHandler)
-	go s.closeMsgChan()
 }
 
 // Обработчик для /send принимает сообщение от пользователя
@@ -99,7 +95,7 @@ func (s *Service) messagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Увеличиваем счетчик соединений и создаем новый канал для записи
+	// Создаем новый канал для текущего соединения
 	s.mux.Lock()
 	connID := s.nextConnID
 	s.nextConnID++
@@ -108,10 +104,14 @@ func (s *Service) messagesHandler(w http.ResponseWriter, r *http.Request) {
 	s.mux.Unlock()
 
 	defer func() {
-		// Во избежание паники закрытие канала и удаление из списка каналов вынесено в отдельный метод и синхронизируется
-		// через канал s.chCloseConn
+		// Закрываем канал для соединения
 		s.log(fmt.Sprintf("Завершено соединение %d", connID))
-		s.chCloseConn <- connID
+
+		s.mux.Lock()
+		close(s.chMessages[connID])
+		delete(s.chMessages, connID)
+		s.mux.Unlock()
+		s.log(fmt.Sprintf("Закрыт канал %d", connID))
 	}()
 
 	// Пишем в канал текущего соединения
@@ -127,15 +127,4 @@ func (s *Service) messagesHandler(w http.ResponseWriter, r *http.Request) {
 // Логгер
 func (s *Service) log(message string) {
 	s.logger.Write([]byte(message + "\n"))
-}
-
-// closeMsgChan закрывает канал сообщений соединения и удаляет его из s.chMessages
-func (s *Service) closeMsgChan() {
-	for connID := range s.chCloseConn {
-		s.mux.Lock()
-		close(s.chMessages[connID])
-		delete(s.chMessages, connID)
-		s.mux.Unlock()
-		s.log(fmt.Sprintf("Закрыт канал %d", connID))
-	}
 }
